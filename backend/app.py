@@ -52,6 +52,7 @@ SKILLS = ["python","java","javascript","c","c++","c#","php",
 class Analysis(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer,db.ForeignKey("user.id"),nullable=True)
     resume_filename = db.Column(db.String(255))
     job_description = db.Column(db.Text)
     score = db.Column(db.Integer)
@@ -72,6 +73,27 @@ class User(UserMixin, db.Model):
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), nullable=False, unique=True)
     password_hash = db.Column(db.String(255), nullable=False)
+    
+def migrate_analysis_user_id():
+    with app.app_context():
+        inspector = db.inspect(db.engine)
+        
+        columns = inspector.get_columns("analysis")
+        columns_names = [column["name"] for column in columns]
+        
+        if "user_id" not in columns_names:
+            with db.engine.begin() as connection:
+                connection.execute(
+                    db.text(
+                        "ALTER TABLE analysis "
+                        "ADD COLUMN user_id INTEGER"
+                    )
+                )
+                
+                print("Added user_id column to analysis table.")
+                
+        else:
+            print("user_id column already exists.")
 
 def extract_pdf_text(file):
     reader = PdfReader(file)
@@ -895,6 +917,7 @@ def home():
 
 
 @app.route("/analyze", methods=["POST"])
+@login_required
 def analyze():
 
     try:
@@ -942,6 +965,7 @@ def analyze():
         result["resume_filename"] = resume_file.filename
         
         analysis = Analysis(
+            user_id=current_user.id,
             resume_filename=resume_file.filename,
             job_description=job_description,
             score=result["score"],
@@ -995,9 +1019,10 @@ def download_report():
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route("/history", methods=["GET"])
+@login_required
 def history():
     
-    analyses = Analysis.query.order_by(
+    analyses = Analysis.query.filter_by(user_id=current_user.id).order_by(
         Analysis.created_at.desc()
     ).all()
     
@@ -1005,21 +1030,30 @@ def history():
     
     for analysis in analyses:
         history_data.append({
-            
-            "id" : analysis.id,
-            "resume_filename" : analysis.resume_filename,
-            "score" : analysis.score,
-            "semantic_score" : analysis.semantic_score,
-            "skill_score" : analysis.skill_score,
-            "length_score" : analysis.length_score,
-            "section_score" : analysis.section_score,
-            "word_count" : analysis.word_count,
-            "job_role" : analysis.job_role,
-            "matching_skills" : json.loads(analysis.matching_skills or "[]"),
-            "missing_skills" : json.loads(analysis.missing_skills or "[]"),
-            "suggestions" : json.loads(analysis.suggestions or "[]"),
-            "created_at" : analysis.created_at.strftime("%Y-%m-%d %H:%M:%S")
+            "id": analysis.id,
+            "resume_filename": analysis.resume_filename,
+            "score": analysis.score,
+            "semantic_score": analysis.semantic_score,
+            "skill_score": analysis.skill_score,
+            "length_score": analysis.length_score,
+            "section_score": analysis.section_score,
+            "word_count": analysis.word_count,
+            "job_role": analysis.job_role,
+            "matching_skills": json.loads(
+                analysis.matching_skills or "[]"
+            ),
+            "missing_skills": json.loads(
+                analysis.missing_skills or "[]"
+            ),
+            "suggestions": json.loads(
+                analysis.suggestions or "[]"
+            ),
+            "created_at": (
+                analysis.created_at.isoformat()
+                if analysis.created_at else None
+            )
         })
+
         
     return jsonify({
         "success": True,
@@ -1113,12 +1147,11 @@ def get_current_user():
             "email": current_user.email
         }
     })
-with app.app_context():
-    db.create_all()
-
-
 if __name__ == "__main__":
+    with app.app_context():
+        db.create_all()
 
+    migrate_analysis_user_id()
     app.run(
         host="127.0.0.1",
         debug=True,

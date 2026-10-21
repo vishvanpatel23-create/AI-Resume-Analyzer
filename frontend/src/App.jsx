@@ -28,10 +28,20 @@ function App() {
   const loadHistory = async () => {
   try {
     const response = await fetch(
-      "http://127.0.0.1:5000/history"
+      "http://127.0.0.1:5000/history",
+      {
+        method: "GET",
+        credentials: "include",
+      }
     );
 
     const data = await response.json();
+
+    if(!response.ok){
+      throw new Error(
+        data.error || "Could not load analysis history."
+      );
+    }
 
     if (data.success) {
       setHistory(data.history);
@@ -87,6 +97,7 @@ function App() {
         "http://127.0.0.1:5000/analyze",
         {
           method: "POST",
+          credentials: "include",
           body: formData,
         }
       );
@@ -102,6 +113,7 @@ function App() {
       }
 
       setResult(data.result);
+      await loadHistory();
 
     } catch (error) {
       console.error("FULL ERROR:", error);
