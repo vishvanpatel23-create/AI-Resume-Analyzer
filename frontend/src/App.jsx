@@ -28,7 +28,7 @@ function App() {
   const loadHistory = async () => {
   try {
     const response = await fetch(
-      "http://127.0.0.1:5000/history",
+      "http://localhost:5000/history",
       {
         method: "GET",
         credentials: "include",
@@ -94,7 +94,7 @@ function App() {
 
       // Send request to Flask
       const response = await fetch(
-        "http://127.0.0.1:5000/analyze",
+        "http://localhost:5000/analyze",
         {
           method: "POST",
           credentials: "include",
@@ -142,7 +142,7 @@ function App() {
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:5000/download_report",
+        "http://localhost:5000/download_report",
         {
           method: "POST",
           headers: {
@@ -188,7 +188,11 @@ function App() {
       return (
         <Login
           onLogin={(userData) => {
+            setResult([]);
+            setResult(null);
+            setError("");
             setUser(userData);
+            loadHistory();
           }}
           onSwitch={() => setShowLogin(false)}
         />
@@ -714,45 +718,48 @@ function App() {
       {history.length > 0 && (
         <section className="history-section">
 
-          <div className="section-heading">
-            <h2>Analysis History</h2>
-            <p>
-              Your previous resume analyses
-            </p>
-          </div>
-          <div className="history-grid">
-            {history.map((item) => (
-              <div className="history-card" key={item.id}>
+    <div className="section-heading">
+        <h2>Analysis History</h2>
+        <p>Your previous resume analyses</p>
+    </div>
 
-                <h3>{item.resume_filename}</h3>
-                <p>
-                  <strong>Score:</strong>{" "}
-                  {item.score} / 100
-                </p>
-                <p>
-                  <strong>Job Role:</strong>{" "}
-                  {item.job_role}
-                </p>
-                <p>
-                  <strong>Semantic Match:</strong>{" "}
-                  {item.semantic_score}%
-                </p>
-                <p>
-                  <strong>Skill Match:</strong>{" "}
-                  {item.skill_score}%
-                </p>
-                <p>
-                  <strong>Word Count:</strong>{" "}
-                  {item.word_count}
-                </p>
-                <p>
-                  <strong>Date:</strong>{" "}
-                  {item.created_at}
-                </p>
-              </div>
+    {history.length > 0 ? (
+        <div className="history-grid">
+            {history.map((item) => (
+                <div className="history-card" key={item.id}>
+                    <h3>{item.resume_filename}</h3>
+
+                    <p>
+                        <strong>Score:</strong> {item.score} / 100
+                    </p>
+
+                    <p>
+                        <strong>Job Role:</strong> {item.job_role}
+                    </p>
+
+                    <p>
+                        <strong>Semantic Match:</strong> {item.semantic_score}%
+                    </p>
+
+                    <p>
+                        <strong>Skill Match:</strong> {item.skill_score}%
+                    </p>
+
+                    <p>
+                        <strong>Word Count:</strong> {item.word_count}
+                    </p>
+
+                    <p>
+                        <strong>Date:</strong> {item.created_at}
+                    </p>
+                </div>
             ))}
-          </div>
-        </section>
+        </div>
+    ) : (
+        <p>No analysis history found. Analyze your first resume!</p>
+    )}
+
+</section>
       )}
 
       {/* Footer */}
